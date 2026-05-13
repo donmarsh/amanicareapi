@@ -22,9 +22,12 @@ If `.env.example` does not exist yet, create `.env` manually:
 DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DATABASE_NAME"
 CONTACT_HASH_PEPPER="replace-with-a-long-random-secret"
 CODE_HASH_PEPPER="replace-with-another-long-random-secret"
+ADMIN_DASHBOARD_KEY="replace-with-a-private-admin-key"
 ```
 
 `DATABASE_URL` is required by Prisma. The pepper values are used before hashing contact identifiers and OTP codes; set strong values outside local development so stored identifiers cannot be trivially reversed.
+
+`ADMIN_DASHBOARD_KEY` protects the admin dashboard. In production, `/admin` stays locked unless this value is set; open it with `http://localhost:3000/admin?key=YOUR_KEY`. Local development allows access without a key if `ADMIN_DASHBOARD_KEY` is not set.
 
 ## Install
 
@@ -93,6 +96,8 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+The admin dashboard is available at `http://localhost:3000/admin`. It includes mobile-friendly sidebar navigation with a home dashboard for help request triage and anonymous support chat, plus separate `/admin/resources` and `/admin/articles` pages for resource/category creation and wellness article publishing.
+
 ## Checks
 
 ```bash
@@ -101,6 +106,8 @@ npm run build
 ```
 
 ## API Overview
+
+Android integration details live in [docs/android-api.md](docs/android-api.md).
 
 - `POST /api/auth/request-code` requests an email or phone verification code.
 - `POST /api/auth/verify-code` verifies the code, creates or resumes an anonymous user, and creates a session.
