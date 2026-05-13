@@ -1,0 +1,13 @@
+import type { PoolConfig } from "mariadb";
+
+export function parseMariaDbUrl(connectionString: string): PoolConfig {
+  const url = new URL(connectionString);
+
+  return {
+    host: url.hostname,
+    port: url.port ? Number(url.port) : 3306,
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database: url.pathname.replace(/^\//, "") || undefined,
+  };
+}

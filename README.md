@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Amanicare API
 
-## Getting Started
+Privacy-first Next.js API for Amanicare. The backend supports anonymous users, OTP-based sign up/sign in, help requests, resources, wellness articles, and anonymous support chat.
 
-First, run the development server:
+## Requirements
+
+- Node.js 20 or newer
+- npm
+- MariaDB or MySQL database
+
+## Environment
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+If `.env.example` does not exist yet, create `.env` manually:
+
+```env
+DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DATABASE_NAME"
+CONTACT_HASH_PEPPER="replace-with-a-long-random-secret"
+CODE_HASH_PEPPER="replace-with-another-long-random-secret"
+```
+
+`DATABASE_URL` is required by Prisma. The pepper values are used before hashing contact identifiers and OTP codes; set strong values outside local development so stored identifiers cannot be trivially reversed.
+
+## Install
+
+```bash
+npm install
+```
+
+The `postinstall` script runs `prisma generate` automatically.
+
+## Prisma
+
+The Prisma schema lives at:
+
+```bash
+prisma/schema.prisma
+```
+
+The generated Prisma client is written to:
+
+```bash
+generated/prisma
+```
+
+Useful commands:
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:studio
+npm run db:seed
+```
+
+Use `npm run prisma:migrate` after changing `prisma/schema.prisma` or when setting up a fresh database. This creates and applies a local migration.
+
+For a disposable local testing database, you can sync the schema without creating a migration:
+
+```bash
+npm exec -- prisma db push
+```
+
+Seed the database after migrations:
+
+```bash
+npm run db:seed
+```
+
+The seed adds resource categories, localized resources, localized wellness articles, and a mobile app test user. The test session token printed by the seed can be used as a bearer token:
+
+```http
+Authorization: Bearer amanicare-mobile-test-token
+```
+
+Localized seed content currently includes English (`en`) and Swahili (`sw`) examples.
+
+To validate the schema without applying migrations:
+
+```bash
+npm exec prisma validate
+```
+
+## Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+## API Overview
 
-To learn more about Next.js, take a look at the following resources:
+- `POST /api/auth/request-code` requests an email or phone verification code.
+- `POST /api/auth/verify-code` verifies the code, creates or resumes an anonymous user, and creates a session.
+- `GET /api/me` returns the current anonymous user.
+- `POST /api/quick-exit` revokes the current session cookie.
+- `GET/POST /api/help-requests` lists or creates help/report requests.
+- `GET /api/resource-categories?locale=en` lists localized resource categories.
+- `GET /api/resources?locale=en&category=legal-aid` lists localized resources.
+- `GET /api/wellness?locale=en` lists localized wellness articles.
+- `GET/POST /api/chat/sessions` lists or creates anonymous chat sessions.
+- `GET/POST /api/chat/sessions/:sessionId/messages` lists or sends chat messages.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Content APIs accept a `locale` query parameter such as `en` or `sw`. If a translation is missing, the API falls back to the record's default language.

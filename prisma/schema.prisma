@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum ContactChannel {
+  EMAIL
+  PHONE
+}
+
+enum AuthCodePurpose {
+  SIGN_UP
+  SIGN_IN
+}
+
+enum HelpNeedType {
+  MEDICAL
+  SECURITY
+  COUNSELING
+  REPORT_INCIDENT
+}
+
+enum HelpRequestStatus {
+  DRAFT
+  SUBMITTED
+  TRIAGED
+  CLOSED
+}
+
+enum ContactPreference {
+  IN_APP
+  EMAIL
+  PHONE
+  NONE
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  IMMEDIATE_DANGER
+}
+
+enum ChatSenderRole {
+  USER
+  SUPPORT
+  SYSTEM
+}
+
+enum ChatSessionStatus {
+  OPEN
+  CLOSED
+  EXPIRED
+}
+
+model AnonymousUser {
+  id              String        @id @default(cuid())
+  username        String        @unique
+  displayName     String?
+  contactChannel  ContactChannel?
+  contactHash     String?       @unique
+  maskedContact   String?
+  lastVerifiedAt  DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  authCodes       AuthCode[]
+  sessions        Session[]
+  helpRequests    HelpRequest[]
+  chatSessions    ChatSession[]
+}
+
+model AuthCode {
+  id              String          @id @default(cuid())
+  contactChannel  ContactChannel
+  contactHash     String
+  codeHash        String
+  purpose         AuthCodePurpose @default(SIGN_UP)
+  attempts        Int             @default(0)
+  expiresAt       DateTime
+  consumedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  userId          String?
+
+  user            AnonymousUser?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([contactHash, contactChannel, expiresAt])
+}
+
+model Session {
+  id              String          @id @default(cuid())
+  tokenHash       String          @unique
+  userAgentHash   String?
+  ipHash          String?
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  userId          String
+
+  user            AnonymousUser   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model HelpRequest {
+  id                  String             @id @default(cuid())
+  needType            HelpNeedType
+  status              HelpRequestStatus  @default(DRAFT)
+  description         String?            @db.Text
+  locationText        String?
+  preferredContact    ContactPreference  @default(IN_APP)
+  safeToContact       Boolean            @default(false)
+  contactNotes        String?            @db.Text
+  incidentOccurredAt  DateTime?
+  severity            IncidentSeverity?
+  submittedAt         DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  userId              String
+
+  user                AnonymousUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([needType, status])
+}
+
+model ResourceCategory {
+  id           String                         @id @default(cuid())
+  slug         String                         @unique
+  defaultLocale String                        @default("en")
+  name         String
+  description  String?                        @db.Text
+  icon         String?
+  sortOrder    Int                            @default(0)
+  createdAt    DateTime                       @default(now())
+  updatedAt    DateTime                       @updatedAt
+
+  resources    Resource[]
+  translations ResourceCategoryTranslation[]
+}
+
+model Resource {
+  id              String                @id @default(cuid())
+  slug            String                @unique
+  defaultLocale   String                @default("en")
+  name            String
+  summary         String            @db.Text
+  address         String?
+  region          String?
+  latitude        Decimal?          @db.Decimal(10, 7)
+  longitude       Decimal?          @db.Decimal(10, 7)
+  phone           String?
+  email           String?
+  websiteUrl      String?
+  isUrgent        Boolean           @default(false)
+  anonymityNotes  String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  categoryId      String
+
+  category        ResourceCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  translations    ResourceTranslation[]
+
+  @@index([categoryId, region])
+  @@index([isUrgent])
+}
+
+model WellnessArticle {
+  id             String                       @id @default(cuid())
+  slug           String                       @unique
+  defaultLocale  String                       @default("en")
+  title          String
+  excerpt        String                       @db.Text
+  body           String                       @db.Text
+  tag            String?
+  imageUrl       String?
+  publishedAt    DateTime?
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  translations   WellnessArticleTranslation[]
+}
+
+model ResourceCategoryTranslation {
+  id          String            @id @default(cuid())
+  locale      String
+  name        String
+  description String?           @db.Text
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  categoryId  String
+
+  category    ResourceCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
+}
+
+model ResourceTranslation {
+  id              String    @id @default(cuid())
+  locale          String
+  name            String
+  summary         String    @db.Text
+  address         String?
+  anonymityNotes  String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  resourceId      String
+
+  resource        Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, locale])
+  @@index([locale])
+}
+
+model WellnessArticleTranslation {
+  id          String          @id @default(cuid())
+  locale      String
+  title       String
+  excerpt     String          @db.Text
+  body        String          @db.Text
+  tag         String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  articleId   String
+
+  article     WellnessArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, locale])
+  @@index([locale])
+}
+
+model ChatSession {
+  id              String            @id @default(cuid())
+  status          ChatSessionStatus @default(OPEN)
+  subject         String?
+  expiresAt       DateTime
+  closedAt        DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  userId          String
+
+  user            AnonymousUser     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages        ChatMessage[]
+
+  @@index([userId, status, updatedAt])
+}
+
+model ChatMessage {
+  id              String          @id @default(cuid())
+  senderRole      ChatSenderRole
+  body            String          @db.Text
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  chatSessionId   String
+
+  chatSession     ChatSession     @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+
+  @@index([chatSessionId, createdAt])
+}
