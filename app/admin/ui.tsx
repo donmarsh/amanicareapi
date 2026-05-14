@@ -1,6 +1,7 @@
 export const helpStatuses = ["SUBMITTED", "TRIAGED", "CLOSED", "DRAFT"];
 export const severities = ["", "LOW", "MEDIUM", "HIGH", "IMMEDIATE_DANGER"];
 export const chatStatuses = ["OPEN", "CLOSED", "EXPIRED"];
+export const adminRoles = ["SUPER_ADMIN", "ADMIN", "SUPPORT"];
 
 export function formatDate(value: Date | string | null) {
   if (!value) {

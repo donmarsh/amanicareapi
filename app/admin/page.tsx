@@ -5,7 +5,7 @@ import {
   type AdminSearchParams,
   DevelopmentAccessNotice,
   hasAdminAccess,
-  readAdminKey,
+  readAdminAccessParams,
 } from "@/app/admin/access";
 import {
   Button,
@@ -36,10 +36,10 @@ type AdminPageProps = {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   await connection();
 
-  const key = await readAdminKey(searchParams);
+  const { key, error } = await readAdminAccessParams(searchParams);
 
-  if (!hasAdminAccess(key)) {
-    return <AdminLocked />;
+  if (!(await hasAdminAccess(key))) {
+    return <AdminLocked error={error} />;
   }
 
   const [

@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { logoutAdmin } from "@/app/admin/actions";
+
 const navItems = [
   { href: "/admin", label: "Home", icon: "H" },
   { href: "/admin/resources", label: "Resources", icon: "R" },
   { href: "/admin/articles", label: "Articles", icon: "A" },
+  { href: "/admin/settings", label: "Settings", icon: "S" },
 ];
 
 export function AdminSidebar() {
@@ -56,6 +59,20 @@ export function AdminSidebar() {
             );
           })}
         </nav>
+        <form action={logoutAdmin}>
+          <button
+            className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+            type="submit"
+          >
+            <span
+              className="grid size-7 place-items-center rounded bg-zinc-100 text-xs text-zinc-700"
+              aria-hidden="true"
+            >
+              S
+            </span>
+            Sign out
+          </button>
+        </form>
       </div>
     </aside>
   );

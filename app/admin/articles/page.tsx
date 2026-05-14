@@ -4,7 +4,7 @@ import {
   AdminLocked,
   type AdminSearchParams,
   hasAdminAccess,
-  readAdminKey,
+  readAdminAccessParams,
 } from "@/app/admin/access";
 import { createWellnessArticle } from "@/app/admin/actions";
 import {
@@ -25,10 +25,10 @@ type ArticlesPageProps = {
 export default async function ArticlesPage({ searchParams }: ArticlesPageProps) {
   await connection();
 
-  const key = await readAdminKey(searchParams);
+  const { key, error } = await readAdminAccessParams(searchParams);
 
-  if (!hasAdminAccess(key)) {
-    return <AdminLocked />;
+  if (!(await hasAdminAccess(key))) {
+    return <AdminLocked error={error} />;
   }
 
   const articles = await prisma.wellnessArticle.findMany({

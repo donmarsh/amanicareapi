@@ -22,12 +22,16 @@ If `.env.example` does not exist yet, create `.env` manually:
 DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DATABASE_NAME"
 CONTACT_HASH_PEPPER="replace-with-a-long-random-secret"
 CODE_HASH_PEPPER="replace-with-another-long-random-secret"
-ADMIN_DASHBOARD_KEY="replace-with-a-private-admin-key"
+ADMIN_EMAIL="admin@example.com"
+ADMIN_PASSWORD="replace-with-a-private-admin-password"
+ADMIN_AUTH_SECRET="replace-with-a-long-random-admin-cookie-secret"
 ```
 
 `DATABASE_URL` is required by Prisma. The pepper values are used before hashing contact identifiers and OTP codes; set strong values outside local development so stored identifiers cannot be trivially reversed.
 
-`ADMIN_DASHBOARD_KEY` protects the admin dashboard. In production, `/admin` stays locked unless this value is set; open it with `http://localhost:3000/admin?key=YOUR_KEY`. Local development allows access without a key if `ADMIN_DASHBOARD_KEY` is not set.
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` can bootstrap access to the admin dashboard. Once signed in, use `/admin/settings` to create database-backed admin users with roles. `ADMIN_AUTH_SECRET` signs the HTTP-only admin cookie, so use a strong random value in production. Local development allows access without admin credentials if no admin access variables or admin users are set.
+
+`ADMIN_DASHBOARD_KEY` is still supported as a fallback for key-based access. If set, open the dashboard with `http://localhost:3000/admin?key=YOUR_KEY`.
 
 ## Install
 

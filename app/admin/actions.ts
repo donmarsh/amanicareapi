@@ -4,15 +4,25 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import type {
+  AdminRole,
   ChatSessionStatus,
   HelpRequestStatus,
   IncidentSeverity,
 } from "@/generated/prisma/enums";
+import {
+  hasAdminLoginConfigured,
+  hashAdminPassword,
+  isAdminSignedIn,
+  signInAdmin,
+  signOutAdmin,
+  verifyAdminCredentials,
+} from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 
 const HELP_STATUSES = new Set(["DRAFT", "SUBMITTED", "TRIAGED", "CLOSED"]);
 const CHAT_STATUSES = new Set(["OPEN", "CLOSED", "EXPIRED"]);
 const SEVERITIES = new Set(["LOW", "MEDIUM", "HIGH", "IMMEDIATE_DANGER"]);
+const ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN", "SUPPORT"]);
 
 function readField(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -23,12 +33,38 @@ function getAdminKey(formData: FormData) {
   return readField(formData, "adminKey");
 }
 
-function requireAdminAccess(formData: FormData) {
+export async function loginAdmin(formData: FormData) {
+  const email = readField(formData, "email");
+  const password = readField(formData, "password");
+  const verifiedCredentials = await verifyAdminCredentials(email, password);
+
+  if (!verifiedCredentials) {
+    redirect("/admin?error=invalid");
+  }
+
+  await signInAdmin(verifiedCredentials);
+  redirect("/admin");
+}
+
+export async function logoutAdmin() {
+  await signOutAdmin();
+  redirect("/admin");
+}
+
+async function requireAdminAccess(formData: FormData) {
+  if (await isAdminSignedIn()) {
+    return;
+  }
+
   const expectedKey = process.env.ADMIN_DASHBOARD_KEY;
 
   if (!expectedKey) {
+    if (await hasAdminLoginConfigured()) {
+      throw new Error("Admin sign in is required.");
+    }
+
     if (process.env.NODE_ENV === "production") {
-      throw new Error("Set ADMIN_DASHBOARD_KEY before using the admin dashboard.");
+      throw new Error("Set ADMIN_EMAIL and ADMIN_PASSWORD before using the admin dashboard.");
     }
 
     return;
@@ -52,7 +88,7 @@ function emptyToNull(value: string) {
 }
 
 export async function createResourceCategory(formData: FormData) {
-  requireAdminAccess(formData);
+  await requireAdminAccess(formData);
 
   const slug = readField(formData, "slug").toLowerCase();
   const name = readField(formData, "name");
@@ -76,8 +112,37 @@ export async function createResourceCategory(formData: FormData) {
   redirect(adminPath(formData));
 }
 
+export async function createAdminUser(formData: FormData) {
+  await requireAdminAccess(formData);
+
+  const email = readField(formData, "email").toLowerCase();
+  const name = readField(formData, "name");
+  const password = readField(formData, "password");
+  const role = readField(formData, "role").toUpperCase();
+
+  if (!email || !password || !ADMIN_ROLES.has(role)) {
+    throw new Error("Admin email, password, and role are required.");
+  }
+
+  if (password.length < 8) {
+    throw new Error("Admin password must be at least 8 characters.");
+  }
+
+  await prisma.adminUser.create({
+    data: {
+      email,
+      name: emptyToNull(name),
+      role: role as AdminRole,
+      passwordHash: await hashAdminPassword(password),
+    },
+  });
+
+  revalidatePath("/admin/settings");
+  redirect(adminPath(formData));
+}
+
 export async function createResource(formData: FormData) {
-  requireAdminAccess(formData);
+  await requireAdminAccess(formData);
 
   const slug = readField(formData, "slug").toLowerCase();
   const name = readField(formData, "name");
@@ -115,7 +180,7 @@ export async function createResource(formData: FormData) {
 }
 
 export async function createWellnessArticle(formData: FormData) {
-  requireAdminAccess(formData);
+  await requireAdminAccess(formData);
 
   const slug = readField(formData, "slug").toLowerCase();
   const title = readField(formData, "title");
@@ -145,7 +210,7 @@ export async function createWellnessArticle(formData: FormData) {
 }
 
 export async function updateHelpRequestStatus(formData: FormData) {
-  requireAdminAccess(formData);
+  await requireAdminAccess(formData);
 
   const id = readField(formData, "id");
   const status = readField(formData, "status").toUpperCase();
@@ -169,7 +234,7 @@ export async function updateHelpRequestStatus(formData: FormData) {
 }
 
 export async function updateHelpRequestSeverity(formData: FormData) {
-  requireAdminAccess(formData);
+  await requireAdminAccess(formData);
 
   const id = readField(formData, "id");
   const severity = readField(formData, "severity").toUpperCase();
@@ -192,7 +257,7 @@ export async function updateHelpRequestSeverity(formData: FormData) {
 }
 
 export async function sendSupportMessage(formData: FormData) {
-  requireAdminAccess(formData);
+  await requireAdminAccess(formData);
 
   const chatSessionId = readField(formData, "chatSessionId");
   const body = readField(formData, "body");
@@ -223,7 +288,7 @@ export async function sendSupportMessage(formData: FormData) {
 }
 
 export async function updateChatSessionStatus(formData: FormData) {
-  requireAdminAccess(formData);
+  await requireAdminAccess(formData);
 
   const id = readField(formData, "id");
   const status = readField(formData, "status").toUpperCase();

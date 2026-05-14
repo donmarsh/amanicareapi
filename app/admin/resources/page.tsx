@@ -4,7 +4,7 @@ import {
   AdminLocked,
   type AdminSearchParams,
   hasAdminAccess,
-  readAdminKey,
+  readAdminAccessParams,
 } from "@/app/admin/access";
 import { createResource, createResourceCategory } from "@/app/admin/actions";
 import {
@@ -26,10 +26,10 @@ type ResourcesPageProps = {
 export default async function ResourcesPage({ searchParams }: ResourcesPageProps) {
   await connection();
 
-  const key = await readAdminKey(searchParams);
+  const { key, error } = await readAdminAccessParams(searchParams);
 
-  if (!hasAdminAccess(key)) {
-    return <AdminLocked />;
+  if (!(await hasAdminAccess(key))) {
+    return <AdminLocked error={error} />;
   }
 
   const [categories, resources] = await Promise.all([
